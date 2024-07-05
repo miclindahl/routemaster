@@ -9,6 +9,15 @@ const model = ref([
         items: [{ label: 'Dashboard', icon: 'pi pi-fw pi-home', to: '/' }]
     },
     {
+        label: 'routes',
+        items: [
+            { label: 'Booker', icon: 'pi pi-fw pi-book', to: '/booker' },
+            { label: 'routes', icon: 'pi pi-fw pi-map-marker', to: '/routes' },
+            { label: 'Visits', icon: 'pi pi-fw pi-users', to: '/visits' },
+            { label: 'Drivers', icon: 'pi pi-fw pi-user', to: '/drivers' },
+        ]
+    },
+    {
         label: 'UI Components',
         items: [
             { label: 'Form Layout', icon: 'pi pi-fw pi-id-card', to: '/uikit/formlayout' },

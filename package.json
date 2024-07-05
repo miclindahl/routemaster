@@ -8,7 +8,10 @@
         "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs --fix --ignore-path .gitignore"
     },
     "dependencies": {
+        "@mapbox/search-js-web": "^1.0.0-beta.21",
+        "@supabase/supabase-js": "^2.44.2",
         "chart.js": "3.3.2",
+        "mapbox-gl": "^3.4.0",
         "primeflex": "^3.3.1",
         "primeicons": "^6.0.1",
         "primevue": "3.49.1",

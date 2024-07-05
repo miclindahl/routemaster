@@ -105,6 +105,8 @@ import TreeSelect from 'primevue/treeselect';
 import TreeTable from 'primevue/treetable';
 import TriStateCheckbox from 'primevue/tristatecheckbox';
 import VirtualScroller from 'primevue/virtualscroller';
+import Stepper from 'primevue/stepper'
+import StepperPanel from 'primevue/stepperpanel';
 
 import BlockViewer from '@/components/BlockViewer.vue';
 
@@ -220,5 +222,7 @@ app.component('TreeSelect', TreeSelect);
 app.component('TreeTable', TreeTable);
 app.component('TriStateCheckbox', TriStateCheckbox);
 app.component('VirtualScroller', VirtualScroller);
+app.component('Stepper',Stepper)
+app.component('StepperPanel',StepperPanel)
 
 app.mount('#app');
