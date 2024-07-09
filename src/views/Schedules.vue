@@ -14,6 +14,9 @@ const schedules = ref([])
 const selectedSchedule = ref(null)
 const allocations = ref([])
 
+const serviceProviders = ref([])
+const selectedServiceProvider = ref(null)
+
 function getRangeStartDate(rangeString) {
   // The range string is in the format: "[\"2024-01-01 08:00:00+00\",\"2024-01-01 18:00:00+00\")"
   // First, remove the PostgreSQL range bounds indicators and unescape the quotes
@@ -46,6 +49,13 @@ async function getSchedules() {
   selectedSchedule.value = schedules.value[0]
 }
 
+async function getServiceProviders() {
+  const { data } = await supabase.from('service_providers').select()
+  serviceProviders.value = data
+  // Filter on schedule
+  console.log(serviceProviders.value)
+  //selectedServiceProvider.value = serviceProviders.value.filter(serviceProvider => serviceProvider.schedule_id === selectedSchedule.value.id)
+}
 
 let map;
 let markers = [];
@@ -113,8 +123,10 @@ onMounted(() => {
     center: [12.5697339, 55.6753132], 
     zoom: 9,
   });
-  getVisits()
+  
   getSchedules()
+  getServiceProviders()
+  getVisits()
 })
 
 
@@ -135,10 +147,11 @@ onMounted(() => {
     </div>
     <div class="col-4">
             <div class="card">
-              <h5>Dropdown</h5>
+              <h5>Schedule</h5>
                 <Dropdown v-model="selectedSchedule" :options="schedules" optionLabel="rangeStartDate" placeholder="Select" />
+                <SelectButton v-model="selectedServiceProvider" :options="serviceProviders" optionLabel="name" />
                 <h5>Besøg</h5>
-                <OrderList v-model="visits"  listStyle="height:250px" dataKey="id" :rows="10">
+                <OrderList v-model="visits" listStyle="height:250px" dataKey="id" :rows="10">
                     <template #header> Visits </template>
                     <template #item="slotProps">
                         <div>{{ slotProps.item.name }}</div>
