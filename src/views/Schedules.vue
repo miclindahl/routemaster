@@ -1,38 +1,50 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { supabase } from '../lib/supabaseClient'
-import { MapboxSearchBox } from '@mapbox/search-js-web'
 import mapboxgl from "mapbox-gl"
 
 
-const searchBoxElement = new MapboxSearchBox()
 
-searchBoxElement.accessToken = 'pk.eyJ1IjoibWljbGluZGFobCIsImEiOiJjbHkxeGM3dG0wd3Q3MmxxdTFla2ZhNm5zIn0.JcP8D0avfCwTb86c2lQFdQ'
-
-// set the options property
-searchBoxElement.options = {
-  language: 'da',
-  country: 'DK',
-  //types: 'address',
-}
 mapboxgl.accessToken = 'pk.eyJ1IjoibWljbGluZGFobCIsImEiOiJjbHkxeGM3dG0wd3Q3MmxxdTFla2ZhNm5zIn0.JcP8D0avfCwTb86c2lQFdQ'
 
 
 
 const visits = ref([])
+const schedules = ref([])
+const selectedSchedule = ref(null)
+const allocations = ref([])
 
+function getRangeStartDate(rangeString) {
+  // The range string is in the format: "[\"2024-01-01 08:00:00+00\",\"2024-01-01 18:00:00+00\")"
+  // First, remove the PostgreSQL range bounds indicators and unescape the quotes
+  const cleanedString = rangeString.replace(/[\[\]\(\)\"]/g, '');
 
-const dropdownValues = ref([
-    { name: 'New York', code: 'NY' },
-    { name: 'Rome', code: 'RM' },
-    { name: 'London', code: 'LDN' },
-    { name: 'Istanbul', code: 'IST' },
-    { name: 'Paris', code: 'PRS' }
-]);
-const dropdownValue = ref(null);
+  // Split the cleaned string by comma to get the start and end dates as array elements
+  const dates = cleanedString.split(',');
 
+  // Extract the start date (first element) and ensure it's trimmed
+  const startDateString = dates[0].trim();
 
+  // Convert to a JavaScript Date object
+  const startDate = new Date(startDateString);
+  const localDateString = startDate.toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+  return localDateString;
+}
 
+async function getSchedules() {
+  const { data } = await supabase.from('schedules').select()
+  schedules.value = data
+
+  // add rangestartdate to each schedule
+  schedules.value.forEach(schedule => {
+    schedule.rangeStartDate = getRangeStartDate(schedule.range)
+  });
+  selectedSchedule.value = schedules.value[0]
+}
 
 
 let map;
@@ -102,6 +114,7 @@ onMounted(() => {
     zoom: 9,
   });
   getVisits()
+  getSchedules()
 })
 
 
@@ -123,9 +136,9 @@ onMounted(() => {
     <div class="col-4">
             <div class="card">
               <h5>Dropdown</h5>
-                <Dropdown v-model="dropdownValue" :options="dropdownValues" optionLabel="name" placeholder="Select" />
+                <Dropdown v-model="selectedSchedule" :options="schedules" optionLabel="rangeStartDate" placeholder="Select" />
                 <h5>Besøg</h5>
-                <OrderList v-model="visits" listStyle="height:250px" dataKey="code" :rows="10">
+                <OrderList v-model="visits"  listStyle="height:250px" dataKey="id" :rows="10">
                     <template #header> Visits </template>
                     <template #item="slotProps">
                         <div>{{ slotProps.item.name }}</div>
