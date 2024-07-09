@@ -53,10 +53,33 @@ async function getServiceProviders() {
   const { data } = await supabase.from('service_providers').select()
   serviceProviders.value = data
   // Filter on schedule
-  console.log(serviceProviders.value)
-  //selectedServiceProvider.value = serviceProviders.value.filter(serviceProvider => serviceProvider.schedule_id === selectedSchedule.value.id)
+  selectedServiceProvider.value = serviceProviders.value[0]
 }
 
+let groupedAllocations = {}
+async function getAssignments() {
+      // Fetch allocations with related visit details
+      let { data , error } = await supabase
+        .from('assignments')
+        .select('schedule_id, sequence, visit_id:visits(id, name, address) as visit')
+        //.order('date', { ascending: true })
+        .order('sequence', { ascending: true })
+
+      if (error) {
+        console.error(error)
+        return
+      }
+      console.log(data)
+      // Group allocations by schedule_id
+      groupedAllocations = data.reduce((acc, allocation) => {
+        if (!acc[allocation.schedule_id]) {
+          acc[allocation.schedule_id] = []
+        }
+        acc[allocation.schedule_id].push(allocation)
+        return acc
+      }, {})
+      console.log(groupedAllocations)
+    }
 let map;
 let markers = [];
 async function getVisits() {
@@ -127,6 +150,7 @@ onMounted(() => {
   getSchedules()
   getServiceProviders()
   getVisits()
+  getAssignments()
 })
 
 
@@ -149,7 +173,7 @@ onMounted(() => {
             <div class="card">
               <h5>Schedule</h5>
                 <Dropdown v-model="selectedSchedule" :options="schedules" optionLabel="rangeStartDate" placeholder="Select" />
-                <SelectButton v-model="selectedServiceProvider" :options="serviceProviders" optionLabel="name" />
+                <Dropdown v-model="selectedServiceProvider" :options="serviceProviders" optionLabel="name" placeholder="Select" />
                 <h5>Besøg</h5>
                 <OrderList v-model="visits" listStyle="height:250px" dataKey="id" :rows="10">
                     <template #header> Visits </template>
@@ -157,6 +181,8 @@ onMounted(() => {
                         <div>{{ slotProps.item.name }}</div>
                     </template>
                 </OrderList>
+                <h5>Ikke allokeret</h5>
+                <p>...</p>
             </div>
         </div>
     <div class="col-8">
