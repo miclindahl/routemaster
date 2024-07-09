@@ -20,41 +20,20 @@ mapboxgl.accessToken = 'pk.eyJ1IjoibWljbGluZGFobCIsImEiOiJjbHkxeGM3dG0wd3Q3Mmxxd
 
 
 const visits = ref([])
-const name = ref('')
-const fullAddress = ref('')
-const floor = ref('')
-const phone = ref('')
-const coordinates = ref('')
 
-searchBoxElement.addEventListener('retrieve', (e) => {
-  if (e.target !== e.currentTarget) return;
-  const searchText = e.detail;
-  const result = searchText.features[0];  
-  console.log(result);
-  fullAddress.value = result.properties.full_address
-  coordinates.value = result.geometry.coordinates;
-  console.log(fullAddress);
-  console.log(coordinates);
 
-});
+const dropdownValues = ref([
+    { name: 'New York', code: 'NY' },
+    { name: 'Rome', code: 'RM' },
+    { name: 'London', code: 'LDN' },
+    { name: 'Istanbul', code: 'IST' },
+    { name: 'Paris', code: 'PRS' }
+]);
+const dropdownValue = ref(null);
 
-//addvisit
-async function addVisit() {
-  const point_str = `POINT(${coordinates.value[0]} ${coordinates.value[1]})`
-  //console.log(point_str)
-  const { data, error } = await supabase.from('visits').insert([
-    { name: name.value, address: fullAddress.value, coordinates: point_str}
-  ])
-  if (error) {
-    console.error('error', error)
-  } else {
-    name.value = ''
-    fullAddress.value = ''
-    floor.value = ''
-    phone.value = ''
-    getVisits()
-  }
-}
+
+
+
 
 let map;
 let markers = [];
@@ -114,17 +93,18 @@ async function getVisits() {
 }
 
 onMounted(() => {
-  document.getElementById('searchbox').appendChild(searchBoxElement);
   //document.getElementById('map').appendChild(mapElement);
 
   map = new mapboxgl.Map({
     container: "map",
-    style: "mapbox://styles/mapbox/streets-v12", // Replace with your preferred map style
+    style: "mapbox://styles/mapbox/streets-v12",
     center: [12.5697339, 55.6753132], 
     zoom: 9,
   });
   getVisits()
 })
+
+
 
 </script>
 
@@ -132,25 +112,7 @@ onMounted(() => {
 <div class="grid">
     <div class="col-12">
         <div class="card p-fluid">
-            <h5>Adresse</h5>
-            <div id="searchbox"></div>
-            {{ fullAddress }}
-            <div class="field">
-                    <label for="floor">Evt. etage</label>
-                    <InputText v-model="floor" id="floor" type="text" />
-            </div>
-            <div class="field">
-                    <label for="name1">Navn</label>
-                    <InputText v-model="name" id="name1" type="text" />
-            </div>
-            <div class="field">
-                    <label for="phone">Telefonnummer</label>
-                    <InputText v-model="phone" id="phone" type="text" />
-            </div>
-            <Button @click="addVisit" label="Tilføj" class="mr-2 mb-2"></Button>
-            <ul>
-                <li v-for="visit in visits" :key="visit.id">{{ visit.name }}</li>
-            </ul>
+            <h5>Adresser</h5>
             <DataTable :value="visits" tableStyle="min-width: 50rem">
                 <Column field="name" header="Name"></Column>
                 <Column field="address" header="Address"></Column>
@@ -158,9 +120,11 @@ onMounted(() => {
             </DataTable>
         </div>
     </div>
-    <div class="col-12">
+    <div class="col-4">
             <div class="card">
-                <h5>Kunder</h5>
+              <h5>Dropdown</h5>
+                <Dropdown v-model="dropdownValue" :options="dropdownValues" optionLabel="name" placeholder="Select" />
+                <h5>Besøg</h5>
                 <OrderList v-model="visits" listStyle="height:250px" dataKey="code" :rows="10">
                     <template #header> Visits </template>
                     <template #item="slotProps">
@@ -169,7 +133,7 @@ onMounted(() => {
                 </OrderList>
             </div>
         </div>
-    <div class="col-12">
+    <div class="col-8">
         <div class="card">
             <h5>Kort</h5>
             <div class="map-container">

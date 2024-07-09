@@ -11,10 +11,10 @@ const model = ref([
     {
         label: 'routes',
         items: [
-            { label: 'Booker', icon: 'pi pi-fw pi-book', to: '/booker' },
-            { label: 'routes', icon: 'pi pi-fw pi-map-marker', to: '/routes' },
+            { label: 'Booking', icon: 'pi pi-fw pi-book', to: '/booker' },
+            { label: 'Schedules', icon: 'pi pi-fw pi-map-marker', to: '/schedules' },
             { label: 'Visits', icon: 'pi pi-fw pi-users', to: '/visits' },
-            { label: 'Drivers', icon: 'pi pi-fw pi-user', to: '/drivers' },
+            { label: 'Service Providers', icon: 'pi pi-fw pi-user', to: '/serviceproviders' },
         ]
     },
     {

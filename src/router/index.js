@@ -19,14 +19,19 @@ const router = createRouter({
                     component: () => import('@/views/Booker.vue')
                 },
                 {
-                    path:'/routes',
-                    name: 'routes',
-                    component: () => import('@/views/Routes.vue')
+                    path:'/schedules',
+                    name: 'schedules',
+                    component: () => import('@/views/Schedules.vue')
                 },
                 {
-                    path: '/drivers',
-                    name: 'drivers',
-                    component: () => import('@/views/Drivers.vue')
+                    path:'/visits',
+                    name: 'visits',
+                    component: () => import('@/views/Visits.vue')
+                },
+                {
+                    path: '/serviceproviders',
+                    name: 'Service providers',
+                    component: () => import('@/views/ServiceProviders.vue')
                 },
                 {
                     path: '/uikit/formlayout',
