@@ -93,11 +93,11 @@ async function getAssignments() {
   console.log(places)
 
 
-  assignments.forEach((assignment, index) => {
+  places.forEach((assignment, index) => {
     if (index > 0) {
       const coordinates = [
-        [assignments[index - 1].visit_id.long, assignments[index - 1].visit_id.lat], // Previous visit's coordinates
-        [assignment.visit_id.long, assignment.visit_id.lat] // Current visit's coordinates
+        [places[index - 1].long, places[index - 1].lat], // Previous visit's coordinates
+        [assignment.long, assignment.lat] // Current visit's coordinates
       ];
       
       const lineFeature = {
@@ -230,6 +230,7 @@ onMounted(() => {
           <Column field="name" header="Name"></Column>
           <Column field="address" header="Address"></Column>
           <Column field="floor" header="Floor"></Column>
+          <Column field="duration" header="Duration (min.)"></Column>
         </DataTable>
       </div>
     </div>
