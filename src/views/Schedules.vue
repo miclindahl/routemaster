@@ -56,30 +56,69 @@ async function getServiceProviders() {
   selectedServiceProvider.value = serviceProviders.value[0]
 }
 
-let groupedAssignments = {}
+let groupedAssignments = ref({})
 async function getAssignments() {
-      // Fetch allocations with related visit details
-      let { data , error } = await supabase
-        .from('assignments')
-        .select('schedule_id, sequence, visit_id:visits(id, name, address,lat,long), service_provider_id')
-        .order('sequence', { ascending: true })
+  // Fetch allocations with related visit details
+  let { data, error } = await supabase
+    .from('assignments')
+    .select('schedule_id, sequence, visit_id:visits(id, name, address,lat,long), service_provider_id')
+    .order('sequence', { ascending: true })
 
-      if (error) {
-        console.error(error)
-        return
-      }
-      console.log(data)
-      // Group allocations by service_provider_id
-      groupedAssignments = data.reduce((acc, assignment) => {
-        if (!acc[assignment.service_provider_id]) {
-          acc[assignment.service_provider_id] = []
-        }
-        acc[assignment.service_provider_id].push(assignment)
-        return acc
-      }, {})
-      
-      console.log(groupedAssignments)
+  if (error) {
+    console.error(error)
+    return
+  }
+
+  // Group allocations by service_provider_id
+  groupedAssignments.value = data.reduce((acc, assignment) => {
+    if (!acc[assignment.service_provider_id]) {
+      acc[assignment.service_provider_id] = []
     }
+    acc[assignment.service_provider_id].push(assignment)
+    return acc
+  }, {})
+
+  const assignments = groupedAssignments.value[1]
+  visits.value.forEach((_, index) => {
+    const lineId = `line-${index}`;
+    if (map.getLayer(lineId)) {
+      map.removeLayer(lineId);
+      map.removeSource(lineId); // Assuming the source id is the same as the layer id
+    }
+  });
+  assignments.forEach((assignment, index) => {
+    if (index > 0) {
+      const coordinates = [
+        [assignments[index - 1].visit_id.long, assignments[index - 1].visit_id.lat], // Previous visit's coordinates
+        [assignment.visit_id.long, assignment.visit_id.lat] // Current visit's coordinates
+      ];
+      
+      const lineFeature = {
+        type: 'Feature',
+        geometry: {
+          type: 'LineString',
+          coordinates: coordinates,
+        },
+      };
+      map.addLayer({
+        id: `line-${index}`,
+        type: 'line',
+        source: {
+          type: 'geojson',
+          data: lineFeature,
+        },
+        layout: {
+          'line-join': 'round',
+          'line-cap': 'round',
+        },
+        paint: {
+          'line-color': '#888',
+          'line-width': 8,
+        },
+      });
+    }
+  });
+}
 let map;
 let markers = [];
 async function getVisits() {
@@ -88,25 +127,16 @@ async function getVisits() {
 
   markers.forEach(marker => marker.remove());
   markers = []; // Reset the markers array
-  visits.value.forEach((_, index) => {
-    const lineId = `line-${index}`;
-    if (map.getLayer(lineId)) {
-      map.removeLayer(lineId);
-      map.removeSource(lineId); // Assuming the source id is the same as the layer id
-    }
-  });
-  
+
+
   serviceProviders.value.forEach(serviceProvider => {
     const longlat = new mapboxgl.LngLat(serviceProvider.long, serviceProvider.lat);
-    const marker = new mapboxgl.Marker({ "color": "#b40219"})
+    const marker = new mapboxgl.Marker({ "color": "#b40219" })
       .setLngLat(longlat)
       .setPopup(new mapboxgl.Popup().setHTML(`<h3>Provider: ${serviceProvider.name}</h3><p>${serviceProvider.address}</p><p>${serviceProvider.phone}</p><p>${serviceProvider.floor}</p><p>${serviceProvider.created_at}</p>`))
       .addTo(map);
     markers.push(marker);
   });
-  
-
-
 
   visits.value.forEach(visit => {
     const longlat = new mapboxgl.LngLat(visit.long, visit.lat)
@@ -114,40 +144,10 @@ async function getVisits() {
       .setLngLat(longlat)
       .setPopup(new mapboxgl.Popup().setHTML(`<h3>${visit.name}</h3><p>${visit.address}</p><p>${visit.phone}</p><p>${visit.floor}</p><p>${visit.created_at}</p`))
       .addTo(map);
+    markers.push(marker);
   })
-  // Add a line between each assignment
-  visits.value.forEach((visit, index) => {
-  if (index > 0) {
-    const coordinates = [
-      [visits.value[index - 1].long, visits.value[index - 1].lat], // Previous visit's coordinates
-      [visit.long, visit.lat] // Current visit's coordinates
-    ];
-    const lineFeature = {
-      type: 'Feature',
-      geometry: {
-        type: 'LineString',
-        coordinates: coordinates,
-      },
-    };
-    map.addLayer({
-      id: `line-${index}`,
-      type: 'line',
-      source: {
-        type: 'geojson',
-        data: lineFeature,
-      },
-      layout: {
-        'line-join': 'round',
-        'line-cap': 'round',
-      },
-      paint: {
-        'line-color': '#888',
-        'line-width': 8,
-      },
-    });
-  }
-});
-  
+
+
 }
 
 async function saveSchedule() {
@@ -158,13 +158,12 @@ async function saveSchedule() {
     service_provider_id: selectedServiceProvider.value.id,
     sequence: index,
   }))
-  console.log(assignments)
 
   // Delete all rows with existing visit_id
   const { error: deleteError } = await supabase
-      .from('assignments')
-      .delete()
-      .in('visit_id', visits.value.map(visit => visit.id))
+    .from('assignments')
+    .delete()
+    .in('visit_id', visits.value.map(visit => visit.id))
 
   const { data, error } = await supabase
     .from('assignments')
@@ -173,7 +172,8 @@ async function saveSchedule() {
     console.error(error)
     return
   }
-  console.log(data)
+  getAssignments()
+
 }
 
 onMounted(() => {
@@ -182,10 +182,10 @@ onMounted(() => {
   map = new mapboxgl.Map({
     container: "map",
     style: "mapbox://styles/mapbox/streets-v12",
-    center: [12.5697339, 55.6753132], 
+    center: [12.5697339, 55.6753132],
     zoom: 9,
   });
-  
+
   getSchedules()
   getServiceProviders()
   getVisits()
@@ -197,57 +197,59 @@ onMounted(() => {
 </script>
 
 <template>
-<div class="grid">
+  <div class="grid">
     <div class="col-12">
-        <div class="card p-fluid">
-            <h5>Schedule</h5>
-            <Dropdown v-model="selectedSchedule" :options="schedules" optionLabel="rangeStartDate" placeholder="Select" />
-        </div>
+      <div class="card p-fluid">
+        <h5>Schedule</h5>
+        <Dropdown v-model="selectedSchedule" :options="schedules" optionLabel="rangeStartDate" placeholder="Select" />
+      </div>
     </div>
     <div class="col-12">
-        <div class="card p-fluid">
-            <h5>Adresser</h5>
-            <DataTable :value="visits" tableStyle="min-width: 50rem">
-                <Column field="name" header="Name"></Column>
-                <Column field="address" header="Address"></Column>
-                <Column field="floor" header="Floor"></Column>
-            </DataTable>
-        </div>
+      <div class="card p-fluid">
+        <h5>Adresser</h5>
+        <DataTable :value="visits" tableStyle="min-width: 50rem">
+          <Column field="name" header="Name"></Column>
+          <Column field="address" header="Address"></Column>
+          <Column field="floor" header="Floor"></Column>
+        </DataTable>
+      </div>
     </div>
     <div class="col-4">
-            <div class="card">
-              <h5>Service provider</h5>
-                <Dropdown v-model="selectedServiceProvider" :options="serviceProviders" optionLabel="name" placeholder="Select" />
-                <h5>Besøg</h5>
-                <OrderList v-model="visits" listStyle="height:250px" dataKey="id" :rows="10">
-                    <template #header> Visits </template>
-                    <template #item="slotProps">
-                        <div>{{ slotProps.item.name }}</div>
-                    </template>
-                </OrderList>
-                <h5>Ikke allokeret</h5>
-                <p>...</p>
-                <Button @click="saveSchedule" label="Save" />
-            </div>
-        </div>
+      <div class="card">
+        <h5>Service provider</h5>
+        <Dropdown v-model="selectedServiceProvider" :options="serviceProviders" optionLabel="name" placeholder="Select" />
+        <h5>Besøg</h5>
+        <OrderList v-model="visits" listStyle="height:250px" dataKey="id" :rows="10">
+          <template #header> Visits </template>
+          <template #item="slotProps">
+            <div>{{ slotProps.item.name }}</div>
+          </template>
+        </OrderList>
+        <h5>Ikke allokeret</h5>
+        <p>...</p>
+        <Button @click="saveSchedule" label="Save" />
+      </div>
+    </div>
     <div class="col-8">
-        <div class="card">
-            <h5>Kort</h5>
-            <div class="map-container">
-                <div id="map"></div>
+      <div class="card">
+        <h5>Kort</h5>
+        <div class="map-container">
+          <div id="map"></div>
         </div>
+      </div>
     </div>
-    </div>
-</div>
+  </div>
 </template>
 
 <style scoped>
 @import url('https://api.mapbox.com/mapbox-gl-js/v2.4.1/mapbox-gl.css');
+
 .map-container {
   position: relative;
   width: 100%;
   height: 95vh;
 }
+
 #map {
   position: absolute;
   top: 0;
