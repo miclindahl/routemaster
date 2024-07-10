@@ -39,8 +39,10 @@ function getRangeStartDate(rangeString) {
 }
 
 async function getSchedules() {
-  const { data } = await supabase.from('schedules').select()
+  const { data } = await supabase.from('schedules')
+  .select('id, range, assignments (id), service_provider_assignments (id, service_provider_id, service_providers (name))')
   schedules.value = data
+  console.log(data)
 
   // add rangestartdate to each schedule
   schedules.value.forEach(schedule => {
@@ -86,6 +88,11 @@ async function getAssignments() {
       map.removeSource(lineId); // Assuming the source id is the same as the layer id
     }
   });
+  //Create a new list call places that have the coordinates for each. The first element should be the service provider and then the assignments. The last should be the service provider again.
+  const places = [serviceProviders.value[0], ...assignments.map(assignment => assignment.visit_id), serviceProviders.value[0]];
+  console.log(places)
+
+
   assignments.forEach((assignment, index) => {
     if (index > 0) {
       const coordinates = [
@@ -200,7 +207,19 @@ onMounted(() => {
   <div class="grid">
     <div class="col-12">
       <div class="card p-fluid">
-        <h5>Schedule</h5>
+        <h5>Schedules</h5>
+        <DataTable :value="schedules" tableStyle="min-width: 50rem">
+          <Column field="rangeStartDate" header="Date"></Column>
+          <Column header="Service Providers">
+            <template #body="slotProps">
+              <span v-for="(assignment, index) in slotProps.data.service_provider_assignments" :key="index">
+                {{ assignment.service_providers.name }}<span v-if="index < slotProps.data.service_provider_assignments.length - 1">, </span>
+              </span>
+            </template>
+          </Column>
+          <Column field="assignments.length" header="Visits"></Column>
+        </DataTable>
+        <h5>Selected</h5>
         <Dropdown v-model="selectedSchedule" :options="schedules" optionLabel="rangeStartDate" placeholder="Select" />
       </div>
     </div>
