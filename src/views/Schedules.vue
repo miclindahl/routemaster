@@ -56,13 +56,12 @@ async function getServiceProviders() {
   selectedServiceProvider.value = serviceProviders.value[0]
 }
 
-let groupedAllocations = {}
+let groupedAssignments = {}
 async function getAssignments() {
       // Fetch allocations with related visit details
       let { data , error } = await supabase
         .from('assignments')
-        .select('schedule_id, sequence, visit_id:visits(id, name, address) as visit')
-        //.order('date', { ascending: true })
+        .select('schedule_id, sequence, visit_id:visits(id, name, address,lat,long), service_provider_id')
         .order('sequence', { ascending: true })
 
       if (error) {
@@ -70,15 +69,16 @@ async function getAssignments() {
         return
       }
       console.log(data)
-      // Group allocations by schedule_id
-      groupedAllocations = data.reduce((acc, allocation) => {
-        if (!acc[allocation.schedule_id]) {
-          acc[allocation.schedule_id] = []
+      // Group allocations by service_provider_id
+      groupedAssignments = data.reduce((acc, assignment) => {
+        if (!acc[assignment.service_provider_id]) {
+          acc[assignment.service_provider_id] = []
         }
-        acc[allocation.schedule_id].push(allocation)
+        acc[assignment.service_provider_id].push(assignment)
         return acc
       }, {})
-      console.log(groupedAllocations)
+      
+      console.log(groupedAssignments)
     }
 let map;
 let markers = [];
@@ -95,6 +95,19 @@ async function getVisits() {
       map.removeSource(lineId); // Assuming the source id is the same as the layer id
     }
   });
+  
+  serviceProviders.value.forEach(serviceProvider => {
+    const longlat = new mapboxgl.LngLat(serviceProvider.long, serviceProvider.lat);
+    const marker = new mapboxgl.Marker({ "color": "#b40219"})
+      .setLngLat(longlat)
+      .setPopup(new mapboxgl.Popup().setHTML(`<h3>Provider: ${serviceProvider.name}</h3><p>${serviceProvider.address}</p><p>${serviceProvider.phone}</p><p>${serviceProvider.floor}</p><p>${serviceProvider.created_at}</p>`))
+      .addTo(map);
+    markers.push(marker);
+  });
+  
+
+
+
   visits.value.forEach(visit => {
     const longlat = new mapboxgl.LngLat(visit.long, visit.lat)
     const marker = new mapboxgl.Marker()
@@ -102,7 +115,7 @@ async function getVisits() {
       .setPopup(new mapboxgl.Popup().setHTML(`<h3>${visit.name}</h3><p>${visit.address}</p><p>${visit.phone}</p><p>${visit.floor}</p><p>${visit.created_at}</p`))
       .addTo(map);
   })
-  // Add a line between each visit
+  // Add a line between each assignment
   visits.value.forEach((visit, index) => {
   if (index > 0) {
     const coordinates = [
@@ -137,6 +150,32 @@ async function getVisits() {
   
 }
 
+async function saveSchedule() {
+  // Convert visits into a list of assignments with visit_id, schedule_id, driver_id and sequence
+  const assignments = visits.value.map((visit, index) => ({
+    visit_id: visit.id,
+    schedule_id: selectedSchedule.value.id,
+    service_provider_id: selectedServiceProvider.value.id,
+    sequence: index,
+  }))
+  console.log(assignments)
+
+  // Delete all rows with existing visit_id
+  const { error: deleteError } = await supabase
+      .from('assignments')
+      .delete()
+      .in('visit_id', visits.value.map(visit => visit.id))
+
+  const { data, error } = await supabase
+    .from('assignments')
+    .upsert(assignments)
+  if (error) {
+    console.error(error)
+    return
+  }
+  console.log(data)
+}
+
 onMounted(() => {
   //document.getElementById('map').appendChild(mapElement);
 
@@ -161,6 +200,12 @@ onMounted(() => {
 <div class="grid">
     <div class="col-12">
         <div class="card p-fluid">
+            <h5>Schedule</h5>
+            <Dropdown v-model="selectedSchedule" :options="schedules" optionLabel="rangeStartDate" placeholder="Select" />
+        </div>
+    </div>
+    <div class="col-12">
+        <div class="card p-fluid">
             <h5>Adresser</h5>
             <DataTable :value="visits" tableStyle="min-width: 50rem">
                 <Column field="name" header="Name"></Column>
@@ -171,8 +216,7 @@ onMounted(() => {
     </div>
     <div class="col-4">
             <div class="card">
-              <h5>Schedule</h5>
-                <Dropdown v-model="selectedSchedule" :options="schedules" optionLabel="rangeStartDate" placeholder="Select" />
+              <h5>Service provider</h5>
                 <Dropdown v-model="selectedServiceProvider" :options="serviceProviders" optionLabel="name" placeholder="Select" />
                 <h5>Besøg</h5>
                 <OrderList v-model="visits" listStyle="height:250px" dataKey="id" :rows="10">
@@ -183,6 +227,7 @@ onMounted(() => {
                 </OrderList>
                 <h5>Ikke allokeret</h5>
                 <p>...</p>
+                <Button @click="saveSchedule" label="Save" />
             </div>
         </div>
     <div class="col-8">
