@@ -42,7 +42,6 @@ async function getSchedules() {
   const { data } = await supabase.from('schedules')
   .select('id, range, assignments (id), service_provider_assignments (id, service_provider_id, service_providers (name))')
   schedules.value = data
-  console.log(data)
 
   // add rangestartdate to each schedule
   schedules.value.forEach(schedule => {
@@ -90,7 +89,6 @@ async function getAssignments() {
   });
   //Create a new list call places that have the coordinates for each. The first element should be the service provider and then the assignments. The last should be the service provider again.
   const places = [serviceProviders.value[0], ...assignments.map(assignment => assignment.visit_id), serviceProviders.value[0]];
-  console.log(places)
 
 
   places.forEach((assignment, index) => {
@@ -230,7 +228,7 @@ onMounted(() => {
           <Column field="name" header="Name"></Column>
           <Column field="address" header="Address"></Column>
           <Column field="floor" header="Floor"></Column>
-          <Column field="duration" header="Duration (min.)"></Column>
+          <Column field="expected_duration" header="Duration (m.)"></Column>
         </DataTable>
       </div>
     </div>
