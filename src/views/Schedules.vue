@@ -18,17 +18,11 @@ const serviceProviders = ref([])
 const selectedServiceProvider = ref(null)
 
 function getRangeStartDate(rangeString) {
-  // The range string is in the format: "[\"2024-01-01 08:00:00+00\",\"2024-01-01 18:00:00+00\")"
-  // First, remove the PostgreSQL range bounds indicators and unescape the quotes
+
   const cleanedString = rangeString.replace(/[\[\]\(\)\"]/g, '');
-
-  // Split the cleaned string by comma to get the start and end dates as array elements
   const dates = cleanedString.split(',');
-
-  // Extract the start date (first element) and ensure it's trimmed
   const startDateString = dates[0].trim();
 
-  // Convert to a JavaScript Date object
   const startDate = new Date(startDateString);
   const localDateString = startDate.toLocaleDateString(undefined, {
     year: 'numeric',
@@ -125,15 +119,16 @@ async function getAssignments() {
   });
 }
 let map;
-let markers = [];
+
 async function getVisits() {
   const { data } = await supabase.from('visits').select()
   visits.value = data
+}
 
+let markers = [];
+async function drawMarkers() {
   markers.forEach(marker => marker.remove());
-  markers = []; // Reset the markers array
-
-
+  markers = [];
   serviceProviders.value.forEach(serviceProvider => {
     const longlat = new mapboxgl.LngLat(serviceProvider.long, serviceProvider.lat);
     const marker = new mapboxgl.Marker({ "color": "#b40219" })
@@ -151,8 +146,6 @@ async function getVisits() {
       .addTo(map);
     markers.push(marker);
   })
-
-
 }
 
 async function saveSchedule() {
@@ -181,7 +174,7 @@ async function saveSchedule() {
 
 }
 
-onMounted(() => {
+onMounted(async () => {
   //document.getElementById('map').appendChild(mapElement);
 
   map = new mapboxgl.Map({
@@ -190,14 +183,13 @@ onMounted(() => {
     center: [12.5697339, 55.6753132],
     zoom: 9,
   });
-
+  await getServiceProviders()
+  await getVisits()
+  drawMarkers()
   getSchedules()
-  getServiceProviders()
-  getVisits()
   getAssignments()
+  
 })
-
-
 
 </script>
 
