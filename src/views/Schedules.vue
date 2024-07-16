@@ -74,6 +74,7 @@ async function getAssignments() {
     return acc
   }, {})
 
+  visits.value = Object.values(groupedAssignments.value).flat()
 
   selectedAssignments.value = groupedAssignments.value[1]
   visits.value.forEach((_, index) => {
@@ -121,11 +122,6 @@ async function getAssignments() {
   });
 }
 let map;
-
-async function getVisits() {
-  const { data } = await supabase.from('visits').select()
-  visits.value = data
-}
 
 let markers = [];
 async function drawMarkers() {
@@ -185,11 +181,10 @@ onMounted(async () => {
     center: [12.5697339, 55.6753132],
     zoom: 9,
   });
-  await getServiceProviders()
-  await getVisits()
-  await drawMarkers()
   await getSchedules()
+  await getServiceProviders()
   await getAssignments()
+  await drawMarkers()
   
 })
 
@@ -231,7 +226,7 @@ onMounted(async () => {
         <h5>Service provider</h5>
         <Dropdown v-model="selectedServiceProvider" :options="serviceProviders" optionLabel="name" placeholder="Select" />
         <h5>Besøg</h5>
-        <OrderList v-model="groupedAssignments[1]" listStyle="height:250px" dataKey="id" :rows="10">
+        <OrderList v-if="selectedServiceProvider" v-model="groupedAssignments[selectedServiceProvider.id]" listStyle="height:250px" dataKey="id" :rows="10">
           <template #header> Visits </template>
           <template #item="slotProps">
             <div>{{ slotProps.item.name }}</div>
