@@ -48,8 +48,8 @@ async function getSchedules() {
 
 
 let groupedAssignments = ref({})
-let selectedAssignments = ref([])
 let lineLayers = []
+
 async function getAssignments() {
   // Fetch allocations with related visit details
   let { data, error } = await supabase
@@ -86,8 +86,6 @@ async function getAssignments() {
   });
   
   Object.keys(groupedAssignments.value).forEach((serviceProviderId) => {
-    console.log(serviceProviderId)
-
     // Get the service provider object
     const serviceProvider = serviceProviders.value.find(provider => provider.id === parseInt(serviceProviderId))
 
@@ -154,8 +152,10 @@ async function drawMarkers() {
 }
 
 async function saveSchedule() {
-  // Convert visits into a list of assignments with visit_id, schedule_id, driver_id and sequence
-  const assignments = visits.value.map((visit, index) => ({
+
+  let visitlist = groupedAssignments.value[selectedServiceProvider.value.id]
+
+  const assignments = visitlist.map((visit, index) => ({
     visit_id: visit.id,
     schedule_id: selectedSchedule.value.id,
     service_provider_id: selectedServiceProvider.value.id,
@@ -166,7 +166,7 @@ async function saveSchedule() {
   const { error: deleteError } = await supabase
     .from('assignments')
     .delete()
-    .in('visit_id', visits.value.map(visit => visit.id))
+    .in('visit_id', visitlist.map(visit => visit.id))
 
   const { data, error } = await supabase
     .from('assignments')
