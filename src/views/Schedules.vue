@@ -34,7 +34,7 @@ function getRangeStartDate(rangeString) {
 
 async function getSchedules() {
   const { data } = await supabase.from('schedules')
-  .select('id, range, assignments (id), service_provider_assignments (id, service_provider_id, service_providers (name))')
+  .select('id, range, assignments (id), service_provider_assignments (id, service_provider_id, service_providers (id, name, lat, long, address))')
   schedules.value = data
 
   // add rangestartdate to each schedule
@@ -42,17 +42,14 @@ async function getSchedules() {
     schedule.rangeStartDate = getRangeStartDate(schedule.range)
   });
   selectedSchedule.value = schedules.value[0]
-}
-
-async function getServiceProviders() {
-  const { data } = await supabase.from('service_providers').select()
-  serviceProviders.value = data
-  // Filter on schedule
+  serviceProviders.value = selectedSchedule.value.service_provider_assignments.map(assignment => assignment.service_providers)
   selectedServiceProvider.value = serviceProviders.value[0]
 }
 
+
 let groupedAssignments = ref({})
 let selectedAssignments = ref([])
+let lineLayers = []
 async function getAssignments() {
   // Fetch allocations with related visit details
   let { data, error } = await supabase
@@ -75,50 +72,60 @@ async function getAssignments() {
   }, {})
 
   visits.value = Object.values(groupedAssignments.value).flat()
-
-  selectedAssignments.value = groupedAssignments.value[1]
   visits.value.forEach((_, index) => {
-    const lineId = `line-${index}`;
-    if (map.getLayer(lineId)) {
-      map.removeLayer(lineId);
-      map.removeSource(lineId); // Assuming the source id is the same as the layer id
-    }
+      const lineId = `line-${_.id}`;
+      if (map.getLayer(lineId)) {
+        map.removeLayer(lineId);
+        map.removeSource(lineId); // Assuming the source id is the same as the layer id
+      }
+    });
+  // for each layer in lineLayers, remove the layer from the map
+  lineLayers.forEach(layer => {
+    map.removeLayer(layer);
+    map.removeSource(layer);
   });
-  //Create a new list call places that have the coordinates for each. The first element should be the service provider and then the assignments. The last should be the service provider again.
-  const places = [serviceProviders.value[0], ...selectedAssignments.value, serviceProviders.value[0]];
+  
+  Object.keys(groupedAssignments.value).forEach((serviceProviderId) => {
+    console.log(serviceProviderId)
 
+    // Get the service provider object
+    const serviceProvider = serviceProviders.value.find(provider => provider.id === parseInt(serviceProviderId))
 
-  places.forEach((assignment, index) => {
-    if (index > 0) {
-      const coordinates = [
-        [places[index - 1].long, places[index - 1].lat], // Previous visit's coordinates
-        [assignment.long, assignment.lat] // Current visit's coordinates
-      ];
-      
-      const lineFeature = {
-        type: 'Feature',
-        geometry: {
-          type: 'LineString',
-          coordinates: coordinates,
-        },
-      };
-      map.addLayer({
-        id: `line-${index}`,
-        type: 'line',
-        source: {
-          type: 'geojson',
-          data: lineFeature,
-        },
-        layout: {
-          'line-join': 'round',
-          'line-cap': 'round',
-        },
-        paint: {
-          'line-color': '#888',
-          'line-width': 8,
-        },
-      });
+    const places = [serviceProvider, ...groupedAssignments.value[serviceProviderId], serviceProvider];
+
+    places.forEach((assignment, index) => {
+      if (index > 0) {
+        const coordinates = [
+          [places[index - 1].long, places[index - 1].lat], // Previous visit's coordinates
+          [assignment.long, assignment.lat] // Current visit's coordinates
+        ];
+        let line_id = `line-${places[index - 1].id}-${assignment.id}`;
+        lineLayers.push(line_id);
+        const lineFeature = {
+          type: 'Feature',
+          geometry: {
+            type: 'LineString',
+            coordinates: coordinates,
+          },
+        };
+        map.addLayer({
+          id: line_id,
+          type: 'line',
+          source: {
+            type: 'geojson',
+            data: lineFeature,
+          },
+          layout: {
+            'line-join': 'round',
+            'line-cap': 'round',
+          },
+          paint: {
+            'line-color': '#888',
+            'line-width': 8,
+          },
+        });
     }
+    });
   });
 }
 let map;
@@ -182,7 +189,6 @@ onMounted(async () => {
     zoom: 9,
   });
   await getSchedules()
-  await getServiceProviders()
   await getAssignments()
   await drawMarkers()
   
