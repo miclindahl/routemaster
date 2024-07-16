@@ -52,11 +52,12 @@ async function getServiceProviders() {
 }
 
 let groupedAssignments = ref({})
+let selectedAssignments = ref([])
 async function getAssignments() {
   // Fetch allocations with related visit details
   let { data, error } = await supabase
     .from('assignments')
-    .select('schedule_id, sequence, visit_id:visits(id, name, address,lat,long), service_provider_id')
+    .select('schedule_id, sequence, visit_id:visits(id, name, address, expected_duration, lat,long), service_provider_id')
     .order('sequence', { ascending: true })
 
   if (error) {
@@ -69,11 +70,12 @@ async function getAssignments() {
     if (!acc[assignment.service_provider_id]) {
       acc[assignment.service_provider_id] = []
     }
-    acc[assignment.service_provider_id].push(assignment)
+    acc[assignment.service_provider_id].push(assignment.visit_id)
     return acc
   }, {})
 
-  const assignments = groupedAssignments.value[1]
+
+  selectedAssignments.value = groupedAssignments.value[1]
   visits.value.forEach((_, index) => {
     const lineId = `line-${index}`;
     if (map.getLayer(lineId)) {
@@ -82,7 +84,7 @@ async function getAssignments() {
     }
   });
   //Create a new list call places that have the coordinates for each. The first element should be the service provider and then the assignments. The last should be the service provider again.
-  const places = [serviceProviders.value[0], ...assignments.map(assignment => assignment.visit_id), serviceProviders.value[0]];
+  const places = [serviceProviders.value[0], ...selectedAssignments.value, serviceProviders.value[0]];
 
 
   places.forEach((assignment, index) => {
@@ -133,7 +135,7 @@ async function drawMarkers() {
     const longlat = new mapboxgl.LngLat(serviceProvider.long, serviceProvider.lat);
     const marker = new mapboxgl.Marker({ "color": "#b40219" })
       .setLngLat(longlat)
-      .setPopup(new mapboxgl.Popup().setHTML(`<h3>Provider: ${serviceProvider.name}</h3><p>${serviceProvider.address}</p><p>${serviceProvider.phone}</p><p>${serviceProvider.floor}</p><p>${serviceProvider.created_at}</p>`))
+      .setPopup(new mapboxgl.Popup().setHTML(`<h3>Provider: ${serviceProvider.name}</h3><p>${serviceProvider.address}</p><p>${serviceProvider.created_at}</p>`))
       .addTo(map);
     markers.push(marker);
   });
@@ -142,7 +144,7 @@ async function drawMarkers() {
     const longlat = new mapboxgl.LngLat(visit.long, visit.lat)
     const marker = new mapboxgl.Marker()
       .setLngLat(longlat)
-      .setPopup(new mapboxgl.Popup().setHTML(`<h3>${visit.name}</h3><p>${visit.address}</p><p>${visit.phone}</p><p>${visit.floor}</p><p>${visit.created_at}</p`))
+      .setPopup(new mapboxgl.Popup().setHTML(`<h3>${visit.name}</h3><p>${visit.address}</p><p>${visit.created_at}</p`))
       .addTo(map);
     markers.push(marker);
   })
@@ -185,9 +187,9 @@ onMounted(async () => {
   });
   await getServiceProviders()
   await getVisits()
-  drawMarkers()
-  getSchedules()
-  getAssignments()
+  await drawMarkers()
+  await getSchedules()
+  await getAssignments()
   
 })
 
@@ -214,9 +216,9 @@ onMounted(async () => {
       </div>
     </div>
     <div class="col-12">
-      <div class="card p-fluid">
-        <h5>Adresser</h5>
-        <DataTable :value="visits" tableStyle="min-width: 50rem">
+      <div v-for="provider in serviceProviders" :key="provider.id" class="card p-fluid">
+        <h5>{{provider.name}}</h5>
+        <DataTable :value="groupedAssignments[provider.id]" tableStyle="min-width: 50rem">
           <Column field="name" header="Name"></Column>
           <Column field="address" header="Address"></Column>
           <Column field="floor" header="Floor"></Column>
@@ -229,14 +231,12 @@ onMounted(async () => {
         <h5>Service provider</h5>
         <Dropdown v-model="selectedServiceProvider" :options="serviceProviders" optionLabel="name" placeholder="Select" />
         <h5>Besøg</h5>
-        <OrderList v-model="visits" listStyle="height:250px" dataKey="id" :rows="10">
+        <OrderList v-model="groupedAssignments[1]" listStyle="height:250px" dataKey="id" :rows="10">
           <template #header> Visits </template>
           <template #item="slotProps">
             <div>{{ slotProps.item.name }}</div>
           </template>
         </OrderList>
-        <h5>Ikke allokeret</h5>
-        <p>...</p>
         <Button @click="saveSchedule" label="Save" />
       </div>
     </div>

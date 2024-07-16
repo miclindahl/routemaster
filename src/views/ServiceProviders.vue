@@ -64,7 +64,7 @@ async function getServiceProviders() {
 
   serviceProviders.value.forEach(provider => {
     const longlat = new mapboxgl.LngLat(provider.long, provider.lat)
-    const marker = new mapboxgl.Marker()
+    const marker = new mapboxgl.Marker({ "color": "#b40219" })
       .setLngLat(longlat)
       .setPopup(new mapboxgl.Popup().setHTML(`<h3>${provider.name}</h3><p>${provider.address}</p><p>${provider.phone}</p><p>${provider.floor}</p><p>${provider.created_at}</p`))
       .addTo(map);
