@@ -73,13 +73,14 @@ async function getSchedules() {
 
 
 let groupedAssignments = ref({})
-let lineLayers = []
+
 
 async function getAssignments() {
   // Fetch allocations with related visit details
   let { data, error } = await supabase
     .from('assignments')
     .select('schedule_id, sequence, visit_id:visits(id, name, address, expected_duration, time_window, lat,long), service_provider_id')
+    .eq('schedule_id', selectedSchedule.value.id)
     .order('sequence', { ascending: true })
 
   if (error) {
@@ -97,40 +98,44 @@ async function getAssignments() {
   }, {})
 
   visits.value = Object.values(groupedAssignments.value).flat()
-  visits.value.forEach((_, index) => {
-      const lineId = `line-${_.id}`;
-      if (map.getLayer(lineId)) {
-        map.removeLayer(lineId);
-        map.removeSource(lineId); // Assuming the source id is the same as the layer id
-      }
-    });
+}
+let map;
+
+let markers = [];
+let lineLayers = []
+
+
+async function drawRoutes() {
+
   // for each layer in lineLayers, remove the layer from the map
   lineLayers.forEach(layer => {
-    map.removeLayer(layer);
-    map.removeSource(layer);
-  });
-  
+    if (map.getLayer(layer)) {
+    map.removeLayer(layer)
+    map.removeSource(layer)
+    }
+  })
+
   Object.keys(groupedAssignments.value).forEach((serviceProviderId) => {
     // Get the service provider object
-    const serviceProvider = serviceProviders.value.find(provider => provider.id === parseInt(serviceProviderId))
+    const serviceProvider=serviceProviders.value.find(provider => provider.id===parseInt(serviceProviderId))
 
-    const places = [serviceProvider, ...groupedAssignments.value[serviceProviderId], serviceProvider];
+    const places=[serviceProvider, ...groupedAssignments.value[serviceProviderId], serviceProvider]
 
     places.forEach((assignment, index) => {
-      if (index > 0) {
-        const coordinates = [
-          [places[index - 1].long, places[index - 1].lat], // Previous visit's coordinates
+      if(index>0) {
+        const coordinates=[
+          [places[index-1].long, places[index-1].lat],
           [assignment.long, assignment.lat] // Current visit's coordinates
-        ];
-        let line_id = `line-${places[index - 1].id}-${assignment.id}`;
-        lineLayers.push(line_id);
-        const lineFeature = {
+        ]
+        let line_id=`line-${places[index-1].id}-${assignment.id}`
+        lineLayers.push(line_id)
+        const lineFeature={
           type: 'Feature',
           geometry: {
             type: 'LineString',
             coordinates: coordinates,
           },
-        };
+        }
         map.addLayer({
           id: line_id,
           type: 'line',
@@ -146,14 +151,12 @@ async function getAssignments() {
             'line-color': '#888',
             'line-width': 8,
           },
-        });
-    }
-    });
-  });
+        })
+      }
+    })
+  })
 }
-let map;
 
-let markers = [];
 async function drawMarkers() {
   markers.forEach(marker => marker.remove());
   markers = [];
@@ -174,6 +177,12 @@ async function drawMarkers() {
       .addTo(map);
     markers.push(marker);
   })
+}
+
+async function syncAssignments() {
+  await getAssignments()
+  drawMarkers()
+  drawRoutes()
 }
 
 async function saveSchedule() {
@@ -200,12 +209,11 @@ async function saveSchedule() {
     console.error(error)
     return
   }
-  getAssignments()
+  syncAssignments()
 
 }
 
 onMounted(async () => {
-  //document.getElementById('map').appendChild(mapElement);
 
   map = new mapboxgl.Map({
     container: "map",
@@ -214,9 +222,10 @@ onMounted(async () => {
     zoom: 9,
   });
   await getSchedules()
-  await getAssignments()
-  await drawMarkers()
+  syncAssignments()
 })
+
+
 
 </script>
 
@@ -237,7 +246,7 @@ onMounted(async () => {
           <Column field="assignments.length" header="Visits"></Column>
         </DataTable>
         <h5>Selected</h5>
-        <Dropdown v-model="selectedSchedule" :options="schedules" optionLabel="rangeStartDate" placeholder="Select" />
+        <Dropdown v-model="selectedSchedule" :options="schedules" optionLabel="rangeStartDate" placeholder="Select" @change="syncAssignments"/>
       </div>
     </div>
     <div class="col-12">

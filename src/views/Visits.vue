@@ -116,6 +116,7 @@ onMounted(() => {
                 <Column field="name" header="Name"></Column>
                 <Column field="address" header="Address"></Column>
                 <Column field="floor" header="Floor"></Column>
+                <Column field="time_window" header="Tidsvindue"></Column>
             </DataTable>
         </div>
     </div>
