@@ -17,14 +17,39 @@ const allocations = ref([])
 const serviceProviders = ref([])
 const selectedServiceProvider = ref(null)
 
-function getRangeStartDate(rangeString) {
-
+function getRangeStartAndEndDate(rangeString) {
   const cleanedString = rangeString.replace(/[\[\]\(\)\"]/g, '');
   const dates = cleanedString.split(',');
   const startDateString = dates[0].trim();
+  const endDateString = dates[1].trim();
 
   const startDate = new Date(startDateString);
-  const localDateString = startDate.toLocaleDateString(undefined, {
+  const endDate = new Date(endDateString);
+  return [startDate, endDate];
+}
+function formatTimeRange(rangeString) {
+  // if rangestring is undefined return empty string
+  if (!rangeString) {
+    return '';
+  }
+
+  const [startDateTime, endDateTime] = getRangeStartAndEndDate(rangeString);
+
+  // Extract just the time part from the full date-time strings
+  const startTime = new Date(startDateTime).toLocaleTimeString(undefined, {
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+  const endTime = new Date(endDateTime).toLocaleTimeString(undefined, {
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+
+  return `${startTime} - ${endTime}`;
+}
+function getRangeStartDate(rangeString) {
+  const [startDateTime, endDateTime] = getRangeStartAndEndDate(rangeString);
+  const localDateString = startDateTime.toLocaleDateString(undefined, {
     year: 'numeric',
     month: 'long',
     day: 'numeric'
@@ -54,7 +79,7 @@ async function getAssignments() {
   // Fetch allocations with related visit details
   let { data, error } = await supabase
     .from('assignments')
-    .select('schedule_id, sequence, visit_id:visits(id, name, address, expected_duration, lat,long), service_provider_id')
+    .select('schedule_id, sequence, visit_id:visits(id, name, address, expected_duration, time_window, lat,long), service_provider_id')
     .order('sequence', { ascending: true })
 
   if (error) {
@@ -191,7 +216,6 @@ onMounted(async () => {
   await getSchedules()
   await getAssignments()
   await drawMarkers()
-  
 })
 
 </script>
@@ -224,6 +248,11 @@ onMounted(async () => {
           <Column field="address" header="Address"></Column>
           <Column field="floor" header="Floor"></Column>
           <Column field="expected_duration" header="Duration (m.)"></Column>
+          <Column header="Tidsvindue">
+            <template #body="slotProps">
+              {{ formatTimeRange(slotProps.data.time_window) }}
+            </template>
+          </Column>
         </DataTable>
       </div>
     </div>
