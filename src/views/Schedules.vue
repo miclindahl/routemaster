@@ -8,14 +8,19 @@ import mapboxgl from "mapbox-gl"
 mapboxgl.accessToken = 'pk.eyJ1IjoibWljbGluZGFobCIsImEiOiJjbHkxeGM3dG0wd3Q3MmxxdTFla2ZhNm5zIn0.JcP8D0avfCwTb86c2lQFdQ'
 
 
-
-const visits = ref([])
 const schedules = ref([])
 const selectedSchedule = ref(null)
-const allocations = ref([])
 
-const serviceProviders = ref([])
+let groupedServiceProviders = ref({})
 const selectedServiceProvider = ref(null)
+
+const visits = ref([])
+let groupedAssignments = ref({})
+
+
+let map;
+let markers = [];
+let lineLayers = []
 
 function getRangeStartAndEndDate(rangeString) {
   const cleanedString = rangeString.replace(/[\[\]\(\)\"]/g, '');
@@ -67,12 +72,19 @@ async function getSchedules() {
     schedule.rangeStartDate = getRangeStartDate(schedule.range)
   });
   selectedSchedule.value = schedules.value[0]
-  serviceProviders.value = selectedSchedule.value.service_provider_assignments.map(assignment => assignment.service_providers)
-  selectedServiceProvider.value = serviceProviders.value[0]
+
+  schedules.value.forEach(schedule => {
+    if (!groupedServiceProviders.value[schedule.id]) {
+        groupedServiceProviders.value[schedule.id] = []
+    }
+    schedule.service_provider_assignments.forEach(assignment => {
+      groupedServiceProviders.value[schedule.id].push(assignment.service_providers)
+    })
+  })
+
+  selectedServiceProvider.value = groupedServiceProviders.value[selectedSchedule.value.id][0]
 }
 
-
-let groupedAssignments = ref({})
 
 
 async function getAssignments() {
@@ -99,10 +111,7 @@ async function getAssignments() {
 
   visits.value = Object.values(groupedAssignments.value).flat()
 }
-let map;
 
-let markers = [];
-let lineLayers = []
 
 
 async function drawRoutes() {
@@ -117,7 +126,7 @@ async function drawRoutes() {
 
   Object.keys(groupedAssignments.value).forEach((serviceProviderId) => {
     // Get the service provider object
-    const serviceProvider=serviceProviders.value.find(provider => provider.id===parseInt(serviceProviderId))
+    const serviceProvider = groupedServiceProviders.value[selectedSchedule.value.id].find(provider => provider.id===parseInt(serviceProviderId))
 
     const places=[serviceProvider, ...groupedAssignments.value[serviceProviderId], serviceProvider]
 
@@ -160,7 +169,7 @@ async function drawRoutes() {
 async function drawMarkers() {
   markers.forEach(marker => marker.remove());
   markers = [];
-  serviceProviders.value.forEach(serviceProvider => {
+  groupedServiceProviders.value[selectedSchedule.value.id].forEach(serviceProvider => {
     const longlat = new mapboxgl.LngLat(serviceProvider.long, serviceProvider.lat);
     const marker = new mapboxgl.Marker({ "color": "#b40219" })
       .setLngLat(longlat)
@@ -250,7 +259,8 @@ onMounted(async () => {
       </div>
     </div>
     <div class="col-12">
-      <div v-for="provider in serviceProviders" :key="provider.id" class="card p-fluid">
+      <template v-if="selectedSchedule">
+      <div v-for="provider in groupedServiceProviders[selectedSchedule.id]" :key="provider.id" class="card p-fluid">
         <h5>{{provider.name}}</h5>
         <DataTable :value="groupedAssignments[provider.id]" tableStyle="min-width: 50rem">
           <Column field="name" header="Name"></Column>
@@ -264,11 +274,12 @@ onMounted(async () => {
           </Column>
         </DataTable>
       </div>
+    </template>
     </div>
     <div class="col-4">
       <div class="card">
         <h5>Service provider</h5>
-        <Dropdown v-model="selectedServiceProvider" :options="serviceProviders" optionLabel="name" placeholder="Select" />
+        <Dropdown v-if="selectedSchedule" v-model="selectedServiceProvider" :options="groupedServiceProviders[selectedSchedule.id]" optionLabel="name" placeholder="Select" />
         <h5>Besøg</h5>
         <OrderList v-if="selectedServiceProvider" v-model="groupedAssignments[selectedServiceProvider.id]" listStyle="height:250px" dataKey="id" :rows="10">
           <template #header> Visits </template>
