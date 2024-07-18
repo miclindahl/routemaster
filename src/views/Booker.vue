@@ -1,12 +1,11 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-import { MapboxSearchBox } from '@mapbox/search-js-web'
 //import { searchBoxElement } from '../lib/mapbox'
 import AddressSearchBox from '/src/components/AddressSearchBox.vue';
 
 
 
-const API_URL = 'https://api.example.com' // Replace with your actual API URL
+const API_URL = 'http://127.0.0.1:8000' // Replace with your actual API URL
 
 
 
@@ -15,22 +14,41 @@ const coordinates = ref('')
 const selectedTimeWindow = ref(null)
 
 
-const timeWindows = ref([
-  // Example data structure
-  { id: 'tw1', label: '08:00 - 09:00' },
-  { id: 'tw2', label: '09:00 - 10:00' }
-  // Add more time windows as needed
-])
-// Function to fetch time windows from an external API
+const timeWindows = ref([])
+
 async function getTimeWindows() {
+  const visit_request = {
+    address: fullAddress.value,
+    long: coordinates.value[0],
+    lat: coordinates.value[1]
+  }
   try {
-    const response = await fetch(`${API_URL}/time-windows`)
+    const response = await fetch(`${API_URL}/get-time-windows`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(visit_request),
+      });
+
     if (!response.ok) {
       throw new Error('Network response was not ok')
     }
     const data = await response.json()
+    console.log(data)
+
+    const formated_time_windows = [] 
+    for (let time_window in data['time_windows']) {
+      const start = new Date(data['time_windows'][time_window][0])
+      const end = new Date(data['time_windows'][time_window][1])
+      const window = {label: `${start.getDate()}. ${start.getMonth()} ${start.getHours()}:00 - ${end.getHours()}:00`, id: time_window, from: start, to: end}
+      formated_time_windows.push(window)
+    }
+
+    //const dateTimeWindows = data['time_windows'].map(window => window.map(timeStringarray => ({label:timeStringarray[0], id:timeStringarray[0], from: new Date(timeStringarray[0]) , to: new Date(timeStringarray[1])})));
+    console.log(formated_time_windows)
     // TODO some formating to display nicely
-    timeWindows.value = data // Assuming the API returns an array of time windows
+    timeWindows.value = formated_time_windows
   } catch (error) {
     console.error('There was a problem fetching the time windows:', error)
   }
@@ -60,8 +78,7 @@ async function update_addressdata(value) {
             <StepperPanel header="Find tidspunkt">
                 <template #content="{ prevCallback, nextCallback }">
                     <div class="flex flex-column h-12rem">
-                        <InputText placeholder="Enter your address here..." class="mt-4" />
-                        <AddressSearchBox @address-found="update_addressdata" />
+                        <AddressSearchBox @address-found="update_addressdata" class="mt-4" />
                         <Button label="Se tilgængelige tidspunkter" class="mt-2" @click="getTimeWindows" :disabled="!coordinates" />
                     </div>
                     <div class="flex flex-column mt-4">
