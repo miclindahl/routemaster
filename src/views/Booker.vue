@@ -10,13 +10,19 @@ const API_URL = 'http://127.0.0.1:8000' // Replace with your actual API URL
 
 
 const fullAddress = ref('')
+
 const coordinates = ref('')
 const selectedTimeWindow = ref(null)
-
+const name = ref('')
+const phone = ref('')
+const email = ref('')
 
 const timeWindows = ref([])
+const isWaiting = ref(false)
+const bookingSuccess = ref(null)
 
 async function getTimeWindows() {
+  isWaiting.value = true
   const visit_request = {
     address: fullAddress.value,
     long: coordinates.value[0],
@@ -49,10 +55,50 @@ async function getTimeWindows() {
     console.log(formated_time_windows)
     // TODO some formating to display nicely
     timeWindows.value = formated_time_windows
+    isWaiting.value = false
   } catch (error) {
     console.error('There was a problem fetching the time windows:', error)
+    isWaiting.value = false
   }
 }
+
+async function book_visit(nextCallback) {
+  isWaiting.value = true
+  console.log(selectedTimeWindow.value)
+  const visit_request = {
+    name: name.value,
+    phone: phone.value,
+    email: email.value,
+    address: fullAddress.value,
+    long: coordinates.value[0],
+    lat: coordinates.value[1],
+    window_from: selectedTimeWindow.value.from,
+    window_to: selectedTimeWindow.value.to,
+  }
+  try {
+    const response = await fetch(`${API_URL}/book-visit`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(visit_request),
+      });
+
+    if (!response.ok) {
+      throw new Error('Network response was not ok')
+    }
+    const data = await response.json()
+    bookingSuccess.value = true
+    isWaiting.value = false
+    nextCallback()
+  } catch (error) {
+    console.error('There was a problem booking the visit:', error)
+    bookingSuccess.value = false
+    isWaiting.value = false
+  }
+
+}
+
 
 async function update_addressdata(value) {
     fullAddress.value = value.fullAddress
@@ -82,7 +128,8 @@ async function update_addressdata(value) {
                         <Button label="Se tilgængelige tidspunkter" class="mt-2" @click="getTimeWindows" :disabled="!coordinates" />
                     </div>
                     <div class="flex flex-column mt-4">
-                        <label for="timeWindowSelect" class="block text-lg font-medium text-gray-700">Vælg et tidspunkt der passer dig</label>
+                      <p><i v-if="isWaiting" class="pi pi-spin pi-spinner" style="font-size: 2rem"></i></p>
+                        <label v-if="timeWindows" for="timeWindowSelect" class="block text-lg font-medium text-gray-700">Vælg et tidspunkt der passer dig</label>
                           <SelectButton v-model="selectedTimeWindow" :options="timeWindows" optionLabel="label" />
                     </div>
                     <div class="flex pt-4 justify-content-between">
@@ -94,23 +141,28 @@ async function update_addressdata(value) {
             <StepperPanel header="Giv kontaktoplysninger">
                 <template #content="{ prevCallback, nextCallback }">
                   <div class="flex flex-column h-12rem">
-                    <InputText placeholder="Indtast dit navn..." class="mt-4" />
-                    <InputText placeholder="Indtast dit telefonnummer..." class="mt-2" />
-                    <InputText placeholder="Indtast din e-mail adresse..." class="mt-2" />
+                    <InputText v-model="name" placeholder="Indtast dit navn..." class="mt-4" />
+                    <InputText v-model="phone" placeholder="Indtast dit telefonnummer..." class="mt-2" />
+                    <InputText v-model="email" placeholder="Indtast din e-mail adresse..." class="mt-2" />
+                    <p><i v-if="isWaiting" class="pi pi-spin pi-spinner" style="font-size: 2rem"></i></p>
                   </div>
                   <div class="flex pt-4 justify-content-between">
                         <Button label="Tilbage" severity="secondary" icon="pi pi-arrow-left" @click="prevCallback" />
-                        <Button label="Næste" icon="pi pi-arrow-right" iconPos="right" @click="nextCallback" />
+                        <Button label="Book tiden" icon="pi pi-check" iconPos="right" @click="book_visit(nextCallback)" />
                 </div>
                 </template>
             </StepperPanel>
             <StepperPanel header="Bekræftigelse">
-                <template #content="{ prevCallback }">
+                <template #content="">
                   <div class="flex flex-column h-12rem">
-                    <p>Vi kommer snart!</p>
+                    <p style="color: green;">
+                      <i class="pi pi-check" style="font-size: 24px;"></i>
+                      Din tid er bekræftiget!
+                    </p>
+                    <p>Vi har sendt en bekræftigelse på mail og sms. Hvis du vil lave ændre så kan du nemt gøre det via det vedlagte link.</p>
                   </div>
                   <div class="flex pt-4 justify-content-start">
-                    <Button label="Back" severity="secondary" icon="pi pi-arrow-left" @click="prevCallback" />
+                    <!--Button label="Back" severity="secondary" icon="pi pi-arrow-left" @click="prevCallback" /-->
                   </div>
                 </template>
             </StepperPanel>
