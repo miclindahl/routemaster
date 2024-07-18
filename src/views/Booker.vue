@@ -64,7 +64,6 @@ async function getTimeWindows() {
 
 async function book_visit(nextCallback) {
   isWaiting.value = true
-  console.log(selectedTimeWindow.value)
   const visit_request = {
     name: name.value,
     phone: phone.value,
