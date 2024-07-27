@@ -17,7 +17,7 @@ const name = ref('')
 const phone = ref('')
 const email = ref('')
 
-const timeWindows = ref([])
+const timeWindows = ref(null)
 const isWaiting = ref(false)
 const bookingSuccess = ref(null)
 
@@ -47,7 +47,8 @@ async function getTimeWindows() {
     for (let time_window in data['time_windows']) {
       const start = new Date(data['time_windows'][time_window][0])
       const end = new Date(data['time_windows'][time_window][1])
-      const window = {label: `${start.getDate()}. ${start.getMonth()} ${start.getHours()}:00 - ${end.getHours()}:00`, id: time_window, from: start, to: end}
+      const date_string = start.toLocaleDateString('da-DK', { weekday: "long", day: "numeric", month: 'long' })
+      const window = {label: `${date_string} ${start.getHours()}:00 - ${end.getHours()}:00`, id: time_window, from: start, to: end}
       formated_time_windows.push(window)
     }
 
@@ -102,7 +103,6 @@ async function book_visit(nextCallback) {
 async function update_addressdata(value) {
     fullAddress.value = value.fullAddress
     coordinates.value = value.coordinates
-    // enable button
 }
 
 </script>
@@ -128,12 +128,16 @@ async function update_addressdata(value) {
                     </div>
                     <div class="flex flex-column mt-4">
                       <p><i v-if="isWaiting" class="pi pi-spin pi-spinner" style="font-size: 2rem"></i></p>
-                        <label v-if="timeWindows" for="timeWindowSelect" class="block text-lg font-medium text-gray-700">Vælg et tidspunkt der passer dig</label>
+                      <div v-if="timeWindows">
+                      <label for="timeWindowSelect" class="block text-lg font-medium text-gray-700">Vælg et tidspunkt der passer dig</label>
                           <SelectButton v-model="selectedTimeWindow" :options="timeWindows" optionLabel="label" />
-                    </div>
+                          <p>Du kan nemt rebooke tidspunktet senere, hvis tidspunktet ikke passer alligevel.</p>
+                        </div> 
+                      </div>
+                   
                     <div class="flex pt-4 justify-content-between">
                         <Button label="Tilbage" severity="secondary" icon="pi pi-arrow-left" @click="prevCallback" />
-                        <Button label="Næste" icon="pi pi-arrow-right" iconPos="right" @click="nextCallback" />
+                        <Button label="Næste" icon="pi pi-arrow-right" iconPos="right" @click="nextCallback"  :disabled="!selectedTimeWindow" />
                     </div>
                 </template>
             </StepperPanel>

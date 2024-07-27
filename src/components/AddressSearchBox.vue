@@ -10,7 +10,7 @@ searchBoxElement.accessToken = 'pk.eyJ1IjoibWljbGluZGFobCIsImEiOiJjbHkxeGM3dG0wd
 searchBoxElement.options = {
   language: 'da',
   country: 'DK',
-  //types: 'address',
+  types: 'street,address',
 }
 
 onMounted(() => {
