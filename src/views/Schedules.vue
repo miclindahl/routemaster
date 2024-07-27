@@ -41,20 +41,26 @@ function formatTimeRange(rangeString) {
   const [startDateTime, endDateTime] = getRangeStartAndEndDate(rangeString);
 
   // Extract just the time part from the full date-time strings
-  const startTime = new Date(startDateTime).toLocaleTimeString(undefined, {
+  const startTime = new Date(startDateTime).toLocaleTimeString('da-DK', {
     hour: '2-digit',
     minute: '2-digit'
   });
-  const endTime = new Date(endDateTime).toLocaleTimeString(undefined, {
+  const endTime = new Date(endDateTime).toLocaleTimeString('da-DK', {
     hour: '2-digit',
     minute: '2-digit'
   });
 
   return `${startTime} - ${endTime}`;
 }
+function formatTime(timeString) {
+  return new Date(timeString).toLocaleTimeString('da-DK', {
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
 function getRangeStartDate(rangeString) {
   const [startDateTime, endDateTime] = getRangeStartAndEndDate(rangeString);
-  const localDateString = startDateTime.toLocaleDateString(undefined, {
+  const localDateString = startDateTime.toLocaleDateString('da-DK', {
     year: 'numeric',
     month: 'long',
     day: 'numeric'
@@ -91,7 +97,7 @@ async function getAssignments() {
   // Fetch allocations with related visit details
   let { data, error } = await supabase
     .from('assignments')
-    .select('schedule_id, sequence, visit_id:visits(id, name, address, expected_duration, time_window, lat,long), service_provider_id')
+    .select('schedule_id, sequence, eta, etd, visit_id:visits(id, name, address, expected_duration, time_window, lat,long), service_provider_id')
     .eq('schedule_id', selectedSchedule.value.id)
     .order('sequence', { ascending: true })
 
@@ -99,13 +105,12 @@ async function getAssignments() {
     console.error(error)
     return
   }
-
   // Group allocations by service_provider_id
   groupedAssignments.value = data.reduce((acc, assignment) => {
     if (!acc[assignment.service_provider_id]) {
       acc[assignment.service_provider_id] = []
     }
-    acc[assignment.service_provider_id].push(assignment.visit_id)
+    acc[assignment.service_provider_id].push({...assignment.visit_id, eta: assignment.eta, etd: assignment.etd, sequence: assignment.sequence})
     return acc
   }, {})
 
@@ -265,7 +270,16 @@ onMounted(async () => {
         <DataTable :value="groupedAssignments[provider.id]" tableStyle="min-width: 50rem">
           <Column field="name" header="Name"></Column>
           <Column field="address" header="Address"></Column>
-          <Column field="floor" header="Floor"></Column>
+          <Column header="eta">
+            <template #body="slotProps">
+              {{ formatTime(slotProps.data.eta) }}
+            </template>
+          </Column>
+          <Column header="etd">
+            <template #body="slotProps">
+              {{ formatTime(slotProps.data.etd) }}
+            </template>
+          </Column>
           <Column field="expected_duration" header="Duration (m.)"></Column>
           <Column header="Tidsvindue">
             <template #body="slotProps">
