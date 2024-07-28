@@ -97,7 +97,7 @@ async function getAssignments() {
   // Fetch allocations with related visit details
   let { data, error } = await supabase
     .from('assignments')
-    .select('schedule_id, sequence, eta, etd, visit_id:visits(id, name, address, expected_duration, time_window, lat,long), service_provider_id')
+    .select('schedule_id, sequence, driving_time, waiting_time, eta, etd, visit_id:visits(id, name, address, expected_duration, time_window, lat,long), service_provider_id')
     .eq('schedule_id', selectedSchedule.value.id)
     .order('sequence', { ascending: true })
 
@@ -110,7 +110,7 @@ async function getAssignments() {
     if (!acc[assignment.service_provider_id]) {
       acc[assignment.service_provider_id] = []
     }
-    acc[assignment.service_provider_id].push({...assignment.visit_id, eta: assignment.eta, etd: assignment.etd, sequence: assignment.sequence})
+    acc[assignment.service_provider_id].push({...assignment.visit_id, driving_time: assignment.driving_time, waiting_time: assignment.waiting_time, eta: assignment.eta, etd: assignment.etd, sequence: assignment.sequence})
     return acc
   }, {})
 
@@ -267,25 +267,34 @@ onMounted(async () => {
       <template v-if="selectedSchedule">
       <div v-for="provider in groupedServiceProviders[selectedSchedule.id]" :key="provider.id" class="card p-fluid">
         <h5>{{provider.name}}</h5>
+        Arbejdstid: 9:00 - 17:00 (8 hours)
         <DataTable :value="groupedAssignments[provider.id]" tableStyle="min-width: 50rem">
+          <Column field="sequence" header="#"></Column>
           <Column field="name" header="Name"></Column>
           <Column field="address" header="Address"></Column>
-          <Column header="eta">
-            <template #body="slotProps">
-              {{ formatTime(slotProps.data.eta) }}
-            </template>
-          </Column>
-          <Column header="etd">
-            <template #body="slotProps">
-              {{ formatTime(slotProps.data.etd) }}
-            </template>
-          </Column>
-          <Column field="expected_duration" header="Duration (m.)"></Column>
           <Column header="Tidsvindue">
             <template #body="slotProps">
               {{ formatTimeRange(slotProps.data.time_window) }}
             </template>
           </Column>
+          <Column field="driving_time" header="Kørsel (m.)"></Column>
+          <Column field="waiting_time" header="Ventetid (m.)">
+            <template #body="slotProps">
+              <span v-if="slotProps.data.waiting_time > 0">{{ slotProps.data.waiting_time }}</span>
+              <span v-else></span>
+            </template>
+          </Column>
+          <Column header="ETA">
+            <template #body="slotProps">
+              {{ formatTime(slotProps.data.eta) }}
+            </template>
+          </Column>
+          <Column header="ETD">
+            <template #body="slotProps">
+              {{ formatTime(slotProps.data.etd) }}
+            </template>
+          </Column>
+          <!--Column field="expected_duration" header="Duration (m.)"></Column-->
         </DataTable>
       </div>
     </template>
