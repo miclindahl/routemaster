@@ -5,7 +5,7 @@ import AddressSearchBox from '/src/components/AddressSearchBox.vue';
 
 
 
-const API_URL = 'http://127.0.0.1:8000' // Replace with your actual API URL
+const ENGINE_API_URL = 'http://127.0.0.1:8000' // Replace with your actual API URL
 
 
 
@@ -29,7 +29,7 @@ async function getTimeWindows() {
     lat: coordinates.value[1]
   }
   try {
-    const response = await fetch(`${API_URL}/get-time-windows`, {
+    const response = await fetch(`${ENGINE_API_URL}/get-time-windows`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -76,7 +76,7 @@ async function book_visit(nextCallback) {
     window_to: selectedTimeWindow.value.to,
   }
   try {
-    const response = await fetch(`${API_URL}/book-visit`, {
+    const response = await fetch(`${ENGINE_API_URL}/book-visit`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

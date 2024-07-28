@@ -6,6 +6,7 @@ import mapboxgl from "mapbox-gl"
 
 
 mapboxgl.accessToken = 'pk.eyJ1IjoibWljbGluZGFobCIsImEiOiJjbHkxeGM3dG0wd3Q3MmxxdTFla2ZhNm5zIn0.JcP8D0avfCwTb86c2lQFdQ'
+const ENGINE_API_URL = 'http://127.0.0.1:8000' // Replace with your actual API URL
 
 
 const schedules = ref([])
@@ -118,6 +119,25 @@ async function getAssignments() {
 }
 
 
+async function reOptimize(schedule_id) {
+  try {
+    const response = await fetch(`${ENGINE_API_URL}/reoptimize/${schedule_id}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({}),
+      });
+
+    if (!response.ok) {
+      throw new Error('Network response was not ok')
+    }
+    const data = await response.json()
+    console.log(data)
+  } catch (error) {
+    console.error('There was a problem:', error)
+  }
+}
 
 async function drawRoutes() {
 
@@ -257,7 +277,12 @@ onMounted(async () => {
               </span>
             </template>
           </Column>
-          <Column field="assignments.length" header="Visits"></Column>
+          <Column field="assignments.length" header="Besøg"></Column>
+          <Column field="assignments.length" header="Udnyttelsesgrad">
+            <template #body="{ data }">
+                <ProgressBar :value="(data.assignments.length / (9*data.service_provider_assignments.length)) * 100" :showValue="false" style="height: 0.5rem"></ProgressBar>
+            </template>
+          </Column>
         </DataTable>
         <h5>Selected</h5>
         <Dropdown v-model="selectedSchedule" :options="schedules" optionLabel="rangeStartDate" placeholder="Select" @change="syncAssignments"/>
@@ -265,9 +290,11 @@ onMounted(async () => {
     </div>
     <div class="col-12">
       <template v-if="selectedSchedule">
+       
       <div v-for="provider in groupedServiceProviders[selectedSchedule.id]" :key="provider.id" class="card p-fluid">
         <h5>{{provider.name}}</h5>
-        Arbejdstid: 9:00 - 17:00 (8 hours)
+        Forventet arbejdstid: 9:00 - 16:53 (7:53)<br/>
+        Køretid: 2:34 (xxkm) <br/>  
         <DataTable :value="groupedAssignments[provider.id]" tableStyle="min-width: 50rem">
           <Column field="sequence" header="#"></Column>
           <Column field="name" header="Name"></Column>
@@ -311,6 +338,7 @@ onMounted(async () => {
           </template>
         </OrderList>
         <Button @click="saveSchedule" label="Save" />
+        <Button @click="reOptimize(selectedSchedule.id)" label="Re-optimize" />
       </div>
     </div>
     <div class="col-8">
